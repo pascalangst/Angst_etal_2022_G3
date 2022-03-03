@@ -82,7 +82,8 @@ anova(Oc.rda, perm=1000)
 #  Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 # Figure with regression line and rda statistics
-pdf("Oc_IBD_pacific.pdf", width = 7, height = 7)                                
+#pdf("Oc_IBD_pacific.pdf", width = 7, height = 7)                                
+tiff(file = "Fig5.tiff", width = 700, height = 700, units = "px", res = 100)
 plot(unlist(as.dist(Oc.dist.matrix)), unlist(as.dist(CoAncestOc)), xlab = "Pairwise distance (1,000 km)", ylab = "Pairwise relatedness", xaxt = "n", cex.lab=1.5, cex.axis=1.5, cex=1.5, pch=16)
 axis(side = 1, at = c(0, 5000000, 10000000, 15000000, 20000000), labels = c("0","5","10","15","20"), tck = -0.01, cex.lab=1.5, cex.axis=1.5)
 abline(5.841e-01, -6.231e-08, lwd = 1.5, col="darkgrey")
