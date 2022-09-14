@@ -1,0 +1,83 @@
+#!/usr/bin/env Rscript
+
+#Script of Peter Fields no modifications except for these three comment lines
+#usage: ls "list_of_your_aligned_ortholgs" | parallel -j 2 "Rscript mask_alignment.Rscript {}"
+#in my pipeline used in the folder "fasta_references" and all "*aligned*" ortholgs
+unlist(strsplit(commandArgs(trailingOnly = TRUE)," "))[1]->filename
+
+#ad hoc approach to mask any codon with three changes UNLESS neither flanking codon is masked
+#makes use of several peculiarities of R, including '==' working element-wise on matrices, vectors being recycled when too short, and 'TRUE' having the value 1 in a sum.
+#filename<-"longtest.fas"
+
+#arbitrary threhold parameters
+dustsize<-20 #blocksize below which identity is assessed
+threshold<-0.5 #percentage divergence above which short cotiguous blocks are masked
+
+require(seqinr)
+read.fasta(filename,forceDNAtolower=FALSE)->dat
+
+#turn vectors into 3-col matrix (rows correspond to codons). I think better with t()
+t(matrix(dat[[1]],nrow=3))->c1
+t(matrix(dat[[2]],nrow=3))->c2
+
+#remove ends that are padded by gaps in the first sequence (exclusing partial codons)
+which(rowSums(c1!=c("-","-","-"))==3)->non_gaps
+min(non_gaps):max(non_gaps)->keep_span
+m1<-c1<-c1[keep_span,]
+m2<-c2<-c2[keep_span,]
+
+#find those rows (codons) to be potentially masked (i.e. no matching bases in the codon)
+rowSums(c1==c2)==0->Pmask
+#find those to be actually masked (potentially masked codons on at least one side)
+rowSums(cbind(c(TRUE,Pmask[-length(Pmask)]),Pmask,c(Pmask[-1],TRUE)))>1->mask
+
+#mask them
+c1[mask,]<-c("N","N","N")
+c2[mask,]<-c("N","N","N")
+
+#mask any block of contiguous unmasked codons if shorter than 2, OR shorter than 'dustsize' if the overall identity is less than 'threshold', or if the identity at codon positions 1&2 is less than 'threshold'
+
+#find where the runs of unmasked sequence start and stop
+rle(mask)->runs
+runs[[1]]->lengths
+runs[[2]]->vals
+cumsum(lengths)-lengths+1->starts;
+cumsum(lengths)->stops
+starts<-starts[!vals]
+stops<-stops[!vals]
+lengths<-lengths[!vals]
+#and for each short run of unmasked sequence, mask it if its VERY short or if the divergence in the first two positions or all three codons is >= threshold
+for(i in 1:length(lengths)){ #mask really fine dust of one or two codons
+	if(lengths[i]<=2){
+			#debug! print("masking too short");print(c(i,lengths[i]))
+			c1[starts[i]:stops[i],]<-c("N","N","N")
+			c2[starts[i]:stops[i],]<-c("N","N","N")
+	}else{
+
+		if(lengths[i]<=dustsize){
+			as.vector(t(c1[starts[i]:stops[i],1:2]))!=as.vector(t(c2[starts[i]:stops[i],1:2]))->diffs2
+			as.vector(t(c1[starts[i]:stops[i],]))!=as.vector(t(c2[starts[i]:stops[i],]))->diffs_all
+			#debug!  print("masking too divergent");print(c(i,lengths[i]))
+			if(((sum(diffs2)/length(diffs2))>=threshold)|((sum(diffs_all)/length(diffs_all))>=threshold)){
+				c1[starts[i]:stops[i],]<-c("N","N","N")
+				c2[starts[i]:stops[i],]<-c("N","N","N")
+			}
+		}
+	
+	}
+}
+
+#mask any codons with gaps in them (if, for example, not a codon alignment)
+rowSums(c1=="-")>0|rowSums(c2=="-")>0->mask
+c1[mask,]<-c("N","N","N")
+c2[mask,]<-c("N","N","N")
+
+#now we need to put the original gaps back in, to aid the location-finding in magna in-species alignments
+c1[m1=="-"]<-"-"
+c2[m2=="-"]<-"-"
+
+#and output, with name change
+write.fasta(list(as.vector(t(c1)),as.vector(t(c2))),names(dat),file=paste(gsub(".fa.+$","_masked.fas",filename)))
+
+
+

@@ -1,0 +1,24 @@
+#!/usr/bin/env Rscript
+# PAML execution of masked alignments
+# usage: ls "your_list_of_aligned_masked_orthologs" | parallel -j 1 "Rscript mask_paml.Rscript {}"
+
+# Read-in of XXX.aligned_masked.fas - Output of Estimate mask_alignment.Rscript
+unlist(strsplit(commandArgs(trailingOnly = TRUE)," "))[1]->fname
+
+#copy original pearl script for conversion to phylip
+system(paste("cp fasta2Phylip.pl paml/.",sep=""))
+
+# fasta2phylip conversion
+system(paste("perl paml/fasta2Phylip.pl -f ", fname, " -o ",gsub(".aligned_masked.fas",".aligned_masked.phy",fname))) 
+
+#make a PAML ctrl file
+system(paste("cat paml/codeml.ctl | sed 's/XXX/",gsub(".aligned_masked.fas",".aligned_masked.phy",fname),"/' | sed 's/YYY/",gsub(".aligned_masked.fas",".aligned_masked",fname),".paml_out/' > codeml.ctl",sep=""))
+
+#run paml
+system(paste("codeml codeml.ctl",sep=""))
+
+#extract the line of interest from paml
+system(paste("grep '^t=' ",gsub(".aligned_masked.fas",".aligned_masked",fname),".paml_out",sep=""), intern=TRUE)->dnds_string
+print(dnds_string)
+c(gsub(".aligned_masked.fas",".aligned_masked",fname),unlist(strsplit(dnds_string,"[ =]+"))[c(2,4,6,8,10,12)])->dnds
+cat(dnds,"\n",sep="\t",file="PAML_DnDs_Estimates_aligned_masked.tsv",append=TRUE)
