@@ -1,1 +1,1 @@
-Just the [link to the manuscript](https://unibas-my.sharepoint.com/:w:/g/personal/pascal_angst_unibas_onmicrosoft_com/EdrmQvCbqytOmvW2xExWM0kBGGrRbei-2kUgkArBrCJpuw?e=CBZmMQ) for now   
+## Repository containing scripts and materials related to the manuscript titled: Population genetic analysis of the microsporidium Ordospora colligata reveals the role of natural selection and phylogeography on genome-wide diversity in its extremely compact and reduced genome
